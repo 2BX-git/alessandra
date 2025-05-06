@@ -3,25 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Monitoramento CareLink</title>
+  <title>Dashboard CareLink - Monitoramento em Tempo Real</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
-    /* Reset */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Inter', sans-serif;
     }
 
     body {
-      background-color: #f4f6f9;
+      background-color: #f0f2f5;
       color: #333;
+      padding: 2rem;
     }
 
     .dashboard {
       max-width: 1200px;
       margin: auto;
-      padding: 2rem;
     }
 
     header {
@@ -34,21 +43,27 @@
     header h1 {
       font-size: 2rem;
       color: #007BFF;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    header h1 i {
+      color: #ffc107;
     }
 
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 1.5rem;
     }
 
     .patient-card {
       background: white;
-      padding: 1.5rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-      position: relative;
-      transition: transform 0.2s ease;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+      overflow: hidden;
+      transition: transform 0.3s ease;
     }
 
     .patient-card:hover {
@@ -56,22 +71,25 @@
     }
 
     .patient-header {
+      padding: 1rem;
+      background: linear-gradient(to right, #007BFF, #00aaff);
+      color: white;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
     }
 
     .name {
       font-weight: bold;
-      font-size: 1.2rem;
+      font-size: 1.1rem;
     }
 
     .status-tag {
       padding: 0.3rem 0.7rem;
       border-radius: 5px;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
+      font-weight: bold;
     }
 
     .urgent {
@@ -85,8 +103,12 @@
     }
 
     .stable {
-      background: #90ee90;
-      color: #333;
+      background: #4CAF50;
+      color: white;
+    }
+
+    .patient-body {
+      padding: 1rem;
     }
 
     .data-row {
@@ -100,15 +122,19 @@
     .label {
       font-weight: 500;
       color: #555;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
     }
 
     .value {
       font-weight: bold;
+      color: #222;
     }
 
-    .location {
-      font-style: italic;
-      color: #888;
+    canvas {
+      max-height: 150px;
+      margin-top: 1rem;
     }
 
     footer {
@@ -117,20 +143,13 @@
       color: #aaa;
       font-size: 0.9rem;
     }
-
-    @media (max-width: 768px) {
-      .data-row {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-    }
   </style>
 </head>
 <body>
 
 <div class="dashboard">
   <header>
-    <h1>📊 Monitoramento em Tempo Real - CareLink</h1>
+    <h1><i class="fas fa-heartbeat"></i> Dashboard CareLink</h1>
   </header>
 
   <div class="card-grid" id="patientsGrid">
@@ -162,6 +181,40 @@
     }
   }
 
+  function getRandomHeartRate(base) {
+    return Math.round(base + (Math.random() * 6 - 3)); // Variação de ±3
+  }
+
+  function createChart(ctx, label, data, color) {
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 10}, (_, i) => i + 1),
+        datasets: [{
+          label: label,
+          data: data,
+          borderColor: color,
+          backgroundColor: `${color}66`,
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+        },
+        scales: {
+          x: { display: false },
+          y: { display: false }
+        }
+      }
+    });
+  }
+
   function renderPatients() {
     const container = document.getElementById('patientsGrid');
     container.innerHTML = '';
@@ -170,38 +223,62 @@
       const card = document.createElement('div');
       card.className = 'patient-card';
 
+      const canvasId = `chart-${p.id}`;
+      const chartData = Array.from({length: 10}, () => getRandomHeartRate(p.heartRate));
+
       card.innerHTML = `
         <div class="patient-header">
           <span class="name">${p.name}</span>
           <span class="status-tag ${getStatusClass(p.status)}">${p.status === 'urgent' ? 'Urgente' : p.status === 'normal' ? 'Atenção' : 'Estável'}</span>
         </div>
-        <div class="data-row">
-          <span class="label">Batimentos:</span>
-          <span class="value">${p.heartRate} bpm</span>
-        </div>
-        <div class="data-row">
-          <span class="label">SpO₂:</span>
-          <span class="value">${p.spo2}%</span>
-        </div>
-        <div class="data-row">
-          <span class="label">Temperatura:</span>
-          <span class="value">${p.temperature}°C</span>
-        </div>
-        <div class="data-row">
-          <span class="label">Localização:</span>
-          <span class="location">${p.location}</span>
-        </div>
-        <div class="data-row">
-          <span class="label">Necessidade:</span>
-          <span class="value">${p.request}</span>
+        <div class="patient-body">
+          <div class="data-row">
+            <span class="label"><i class="fas fa-heartbeat"></i> Batimentos</span>
+            <span class="value" id="hr-${p.id}">${p.heartRate} bpm</span>
+          </div>
+          <div class="data-row">
+            <span class="label"><i class="fas fa-tint"></i> SpO₂</span>
+            <span class="value">${p.spo2}%</span>
+          </div>
+          <div class="data-row">
+            <span class="label"><i class="fas fa-thermometer-half"></i> Temperatura</span>
+            <span class="value">${p.temperature}°C</span>
+          </div>
+          <div class="data-row">
+            <span class="label"><i class="fas fa-map-marker-alt"></i> Localização</span>
+            <span class="location">${p.location}</span>
+          </div>
+          <div class="data-row">
+            <span class="label"><i class="fas fa-comment-medical"></i> Necessidade</span>
+            <span class="value">${p.request}</span>
+          </div>
+          <canvas id="${canvasId}" height="80"></canvas>
         </div>
       `;
 
       container.appendChild(card);
+
+      // Cria gráfico
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      const chart = createChart(ctx, 'Batimentos', chartData, p.status === 'urgent' ? '#ff4d4d' : '#007BFF');
+
+      // Atualiza os dados em tempo real
+      setInterval(() => {
+        const newHR = getRandomHeartRate(p.heartRate);
+        p.heartRate = newHR;
+        document.getElementById(`hr-${p.id}`).textContent = `${newHR} bpm`;
+
+        chart.data.labels.push(chart.data.labels.length + 1);
+        chart.data.datasets[0].data.push(newHR);
+        if (chart.data.labels.length > 10) {
+          chart.data.labels.shift();
+          chart.data.datasets[0].data.shift();
+        }
+        chart.update();
+      }, 3000);
     });
   }
 
-  // Renderizar ao carregar
   window.onload = renderPatients;
 </script>
 
